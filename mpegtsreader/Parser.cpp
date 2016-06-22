@@ -1,17 +1,20 @@
 #include "Parser.h"
-
 #include <iostream>
-//PMT SÓ APARECE QUANDO PAT TABLE_ID = 2
 
-void printbincharpad(char c)
-{
-	for (int i = 7; i >= 0; --i)
-	{
+/*
+	Conversão de char para binário
+*/
+void printbincharpad(char c) {
+	for (int i = 7; i >= 0; --i) {
 		putchar((c & (1 << i)) ? '1' : '0');
 	}
 	putchar('\n');
 }
 
+/*
+	Função responsável pelo início do parser no vídeo
+	Como a atividade requer que vídeo seja lido/aberto a cada 188 bytes, é criado o packetSize
+*/
 Parser::Parser(std::string videoFile) {
 	fileName = videoFile;
 	packetSize = 188;
@@ -23,79 +26,98 @@ Parser::Parser(std::string videoFile) {
 	}
 }
 
+/*
+	Destructor da Classe
+*/
 Parser::~Parser() {
 	reader.close();
 	delete packet;
 }
 
+/*
+	Função readBytes()
+	Responsável pela leitura de bytes no arquivo e exibição dos valores
+*/
 void Parser::readBytes() {
 	reader.read((char*)(&packet[0]), packetSize);
-	
+
+	//O valor de packet (packet[i]) muda quando passa 8 bytes 
+	//sync_byte possui um valor fixo, que é 0x47, porém, caso esse valor não seja mais esse, ele faz a leitura de novo
 	if (packet[0] != 0x47)
 		readBytes();
 	else {
-		std::cout << std::endl;
-		std::cout << "sync_byte = " << "0x47" << std::endl;
+
+		//sync_byte possui um valor fixo, '0100 0111' ou '0x47'
+		std::cout << "sync_byte = " << "0x47" << std::endl; 
+		//transport_error_indicator necessita de apenas 1 bit (1º mais a esquerda), ele é pegado e movido 7 "casas", para que possa ser impresso
 		std::cout << "transport_error_indicator = " << ((packet[1] & 0x80) >> 7) << std::endl;
+		//payload_unit_start_indicator é o segundo bit mais a esquerda, pega-se ele e move 6 "casas" para ser impresso
 		std::cout << "payload_unit_start_indicator = " << ((packet[1] & 0x40) >> 6) << std::endl;
+		//transport_priority é o 3º mais a esquerda, move-se 5 e é impresso
 		std::cout << "transport_priority = " << ((packet[1] & 0x20) >> 5) << std::endl;
+		//PID é o restante do 2º byte e o 3º byte, faz-se uma soma de binário para imprimi-lo
 		std::cout << "PID = " << (((packet[1] & 0x1F) << 8) | packet[2]) << std::endl;
 
+		/* 
+			Se o PID do pacote TS for 0, isso quer dizer que há uma tabela PAT
+			De acordo com isso, quando ocorrer que o PID seja 0, os dados da tabela PAT será impressa logo abaixo do PID
+		*/
 		if ((((packet[1] & 0x1F) << 8) | packet[2]) == 0) {
+			//Simples informação ao usuário
+			std::cout << "\t ---- " << std::endl;
 			std::cout << "\tDue to the PID is 0:"<< std::endl;
+			//table_id corresponde a 1 byte, ele é modificado pra unsigned int devido a mnemonica dele (uimsbf)
 			std::cout << "\tPAT table_id = " << (unsigned int)packet[5] << std::endl;
+			//section_syntax_indicator é apenas 1 bit, pega-se ele e move para direita para ser impresso
 			std::cout << "\tPAT section_syntax_indicator = " << ((packet[6] & 0x80) >> 7) << std::endl;
 
+			//Como são valores reservados, não vi a necessidade de que fossem impressos
 			//std::cout << "\tPAT reserved1 = " << ((packet[6] & 0x20) >> 5) << std::endl;
 
+			//section_lenght, restante do byte somado com o próximo byte para ser exibido
 			std::cout << "\tPAT section_lenght = " << ((packet[6] & 0x03) | packet[7]) << std::endl;
+			//transport_stream_id soma 2 bytes e exibe
 			std::cout << "\tPAT transport_stream_id = " << (packet[8] | packet[9]) << std::endl;
+
+			/*
+				Aqui há um segundo reserved da tabela, que seria os dois primeiros bits de packet[10]
+				Por ser um valor reservado, não vi novamente necessidade de imprimir
+				Além do mais, não vi nada na especificação falando sobre esses campos de nome 'reserved'
+			*/
+
+			//version_number, pega do 3º ao 7º bit e move para direita, mnemonica uimsbf
 			std::cout << "\tPAT version_number = " << (unsigned int)((packet[10] & 0x3E) >> 1) << std::endl;
+			//current_next_indicator, é lido o último bit (mais a direita) e impresso
 			std::cout << "\tPAT current_next_indicator = " << (packet[10] & 0x01) << std::endl;
+			//section_number possui um valor de 8 bytes e mnemonica uimsbf, por isso é pego apenas o valor completo e convertido
 			std::cout << "\tPAT section_number = " << (unsigned int)(packet[11]) << std::endl;
+			//last_section_number possui um valor de 8 bytes e mnemonica uimsbf, por isso é pego apenas o valor completo e convertido
 			std::cout << "\tPAT last_section_number = " << (unsigned int)(packet[12]) << std::endl;
 
+			//Uma pequena operação é realizada para calcular N, que seria a quantidade de vezes para achar program_number
 			int table_count = (((packet[6] & 0x03) | packet[7]) & 0xFFF);
+			table_count = ((table_count - 9) / 4);
 			
-			//section_lenght = ((packet[6] & 0x03) | packet[7])
-			for (int i = 0; i < ((table_count - 9) / 4); i++) {
+			//loop para pesquisa do program_number, network_PID ou program_map_PID, ambos de mnemonica uimsbf
+			for (int i = 0; i < table_count; i++) {
 				std::cout << "\tPAT program_number = " << (unsigned int)(packet[13 + (i * 4)] | packet[14 + (i * 4)]) << std::endl;
-				if ((unsigned int)(packet[13 + (i * 4)] | packet[14 + (i * 4)]) == 0) //if program_number ==0
+				if ((unsigned int)(packet[13 + (i * 4)] | packet[14 + (i * 4)]) == 0) //if program_number == 0
 					std::cout << "\tPAT network_PID = " << (unsigned int)((packet[15 + (i * 4)] & 0x1F) | packet[16 + (i * 4)]) << std::endl;
 				else
 					std::cout << "\tPAT program_map_PID = " << (unsigned int)((packet[15 + (i * 4)] & 0x1F) | packet[16 + (i * 4)]) << std::endl;
-					//std::cout << (unsigned int)((packet[15 + i * 4]) & 0x1F) << "   " << (unsigned int)(packet[16 + i * 4]) << std::endl;
 			}
 
-			//convert each byte to hex
+			//Foi melhor mostrar o CRC_32 em hex, por isso,converti cada 8 bytes em hex
 			std::cout << "\tPAT CRC_32 = " << std::hex << (unsigned int)packet[17] << " " << (unsigned int)packet[18] << 
 				" " << (unsigned int)packet[19] << " " << (unsigned int)packet[20] << std::dec << std::endl;
-
-			//std::cout << ((packet[6] & 0x03) | packet[7]) << std::endl;
+			std::cout << "\t ---- " << std::endl;
 		}
 
+		//Aqui volta a ser exibido o restante do pacote TS, após finalizar as exibições da tabela PAT
 		std::cout << "transport_scrambling_control = " << (packet[3] & 0xC0) << std::endl;
-		/*
-		switch ((packet[3] >> 6)){
-		case 0x00:
-			std::cout << "    Not Scrambled" << std::endl;
-			break;
-		case 0x01:
-			std::cout << "    Reserved for future use" << std::endl;
-			break;
-		case 0x02:
-			std::cout << "    Scrambled with even key" << std::endl;
-			break;  
-		case 0x03:
-			std::cout << "    Scrambled with odd key" << std::endl;
-			break;
-		}
-		*/
 		std::cout << "adaptation_field_control = " << ((packet[3] & 0x30) >> 4) << std::endl;
 		std::cout << "continuity_counter = " << (packet[3] & 0xF) << std::endl;
-		
-		//int a;
-		//std::cin >> a;
+		std::cout << std::endl;
 
 	}
 }
