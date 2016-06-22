@@ -10,14 +10,22 @@ da tabela PAT na página 43; e da tabela PMT na página 46.
 TODO:
 1. Corrigir erro do program_map_PID/netword_PID da tabela PAT, está imprimindo um valor incorreto (rever os bytes/bits)
 2. Inserir tabela PMT
-3. Inserir vídeo como argumento
-4. Não ficar chamando a função readBytes() direto, fazer num loop
+3. Inserir vídeo como argumento - FEITO, FALTA APENAS RETIRAR OS COMENTÁRIOS
+4. Não ficar chamando a função readBytes() direto, fazer um loop
 5. Salvar o que for impresso em um arquivo txt, para não poluir o console
 */
 
 int main(int argc, char ** argv) {
-	Parser* tsParser = new Parser("C:\\Users\\nycho\\Documents\\GitHub\\mpegtsreader\\Debug\\video.ts");
-	tsParser->readBytes();
+	/*
+	if (argc != 2) {
+		std::cerr << "Uso: mpegtsreader <video.extensao>" << std::endl;
+		return EXIT_FAILURE;
+	}
+	*/
+
+	Parser *tsParser = new Parser("C:\\Users\\nycho\\Documents\\GitHub\\mpegtsreader\\Debug\\video.ts");
+	//Parser* tsParser = new Parser(argv[1]);
+
 	tsParser->readBytes();
 	tsParser->readBytes();
 	tsParser->readBytes();

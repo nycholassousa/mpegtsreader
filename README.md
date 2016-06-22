@@ -10,6 +10,13 @@ Um fluxo de TV Digital (MPEG-2 Transport Stream ou MPEG-2 TS) é organizado em p
 
 Implementar um programa em C/C++ (ou Java) que leia o fluxo de pacotes TS do arquivo vídeo.ts e que extraia as informações das tabelas de sinalização PAT e PMT. A saída do programa deve apresentar as principais infomações contidas nessas tabelas. A especificação técnica H.222.01 estrutura dos pacotes TS, das tabelas de sinalização e de outras informações da ITU (International Telecomunication Union) define a estrutura dos pacotes TS, das tabelas de sinalização e de outras informações.
 
-## Informações para compilar
+## Compilando o código
 
-Atualmente, o código está utilizando o Visual Studio 2015, com isso, necessita-se do mesmo para que possa ser compilado e executado.
+Atualmente, o código está utilizando o Visual Studio 2015, com isso, necessita-se do mesmo para que possa ser compilado.
+
+## Executando o programa
+
+Através do console, digite:
+	mpegtsreader <video.extensão>
+Por exemplo,
+	mpegtsreader <video.ts>
