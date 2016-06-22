@@ -16,7 +16,4 @@ Atualmente, o código está utilizando o Visual Studio 2015, com isso, necessita
 
 ## Executando o programa
 
-Através do console, digite:
-	mpegtsreader <video.extensão>
-Por exemplo,
-	mpegtsreader <video.ts>
+	mpegtsreader <arquivo>
