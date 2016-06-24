@@ -1,2 +1,4 @@
-﻿  Main.cpp
+﻿  Parser.cpp
+  Main.cpp
+  Generating Code...
   mpegtsreader.vcxproj -> C:\Users\nycho\Documents\GitHub\mpegtsreader\Debug\mpegtsreader.exe

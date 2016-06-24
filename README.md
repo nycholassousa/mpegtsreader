@@ -16,4 +16,4 @@ Atualmente, o código está utilizando o Visual Studio 2015, com isso, necessita
 
 ## Executando o programa
 
-	mpegtsreader <arquivo>
+	mpegtsreader.exe <arquivo>

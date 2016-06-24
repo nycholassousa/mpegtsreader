@@ -79,12 +79,13 @@ void Parser::readBytes() {
 				myFile << "\tPAT section_syntax_indicator = " << ((packet[6] & 0x80) >> 7) << std::endl;
 
 				//Como são valores reservados, não vi a necessidade de que fossem impressos
+				//myFile << "\tPAT 0 = " << ((packet[6] & 0x40) >> 6) << std::endl;
 				//myFile << "\tPAT reserved1 = " << ((packet[6] & 0x20) >> 5) << std::endl;
 
 				//section_lenght, restante do byte somado com o próximo byte para ser exibido
-				myFile << "\tPAT section_lenght = " << ((packet[6] & 0x03) | packet[7]) << std::endl;
+				myFile << "\tPAT section_lenght = " << (unsigned int)((packet[6] & 0x0F) | packet[7]) << std::endl;
 				//transport_stream_id soma 2 bytes e exibe
-				myFile << "\tPAT transport_stream_id = " << (packet[8] | packet[9]) << std::endl;
+				myFile << "\tPAT transport_stream_id = " << (unsigned int)(packet[8] | packet[9]) << std::endl;
 
 				/*
 				Aqui há um segundo reserved da tabela, que seria os dois primeiros bits de packet[10]
@@ -102,11 +103,12 @@ void Parser::readBytes() {
 				myFile << "\tPAT last_section_number = " << (unsigned int)(packet[12]) << std::endl;
 
 				//Uma pequena operação é realizada para calcular N, que seria a quantidade de vezes para achar program_number
-				int table_count = (((packet[6] & 0x03) | packet[7]) & 0xFFF);
+				int table_count = ((packet[6] & 0x0F) | packet[7]);
 				table_count = ((table_count - 9) / 4);
+				int i;
 
 				//loop para pesquisa do program_number, network_PID ou program_map_PID, ambos de mnemonica uimsbf
-				for (int i = 0; i < table_count; i++) {
+				for (i = 0; i < table_count; i++) {
 					myFile << "\tPAT program_number = " << (unsigned int)(packet[13 + (i * 4)] | packet[14 + (i * 4)]) << std::endl;
 					if ((unsigned int)(packet[13 + (i * 4)] | packet[14 + (i * 4)]) == 0) //if program_number == 0
 						myFile << "\tPAT network_PID = " << (unsigned int)((packet[15 + (i * 4)] & 0x1F) | packet[16 + (i * 4)]) << std::endl;
@@ -126,6 +128,40 @@ void Parser::readBytes() {
 				myFile << "\tPMT table_id = " << (unsigned int)packet[5] << std::endl;
 				//section_syntax_indicator é apenas 1 bit, pega-se ele e move para direita para ser impresso
 				myFile << "\tPMT section_syntax_indicator = " << ((packet[6] & 0x80) >> 7) << std::endl;
+				//section_lenght são 12 bits, necessário pegar os 4 restantes e somar com os 8 depois
+				myFile << "\tPMT section_lenght = " << (unsigned int)((packet[6] & 0x0F) | packet[7]) << std::endl;
+				//program_number são 16 bits, faz-se a soma
+				myFile << "\tPMT program_number = " << (unsigned int)(packet[8] | packet[9]) << std::endl;
+				//
+				myFile << "\tPMT version_number = " << (unsigned int)((packet[10] & 0x3E) >> 1) << std::endl;
+				//
+				myFile << "\tPMT current_next_indicator = " << (packet[10] & 0x01) << std::endl;
+				//
+				myFile << "\tPMT section_number = " << (unsigned int)(packet[11]) << std::endl;
+				//
+				myFile << "\tPMT last_section_number = " << (unsigned int)(packet[12]) << std::endl;
+				//
+				myFile << "\tPMT PCR_PID = " << (unsigned int)((packet[13] & 0x1F) | packet[14]) << std::endl;
+				//
+				myFile << "\tPMT program_info_lenght = " << (unsigned int)((packet[15] & 0x0F) | packet[16]) << std::endl;
+
+				int table_count = ((packet[6] & 0x0F) | packet[7]);
+				table_count = ((table_count - 9) / 4);
+				int i;
+
+				for (i = 0; i < 1; i++) {
+					//
+					myFile << "\tPMT stream_type = " << (unsigned int)(packet[17 + (i * 4)]) << std::endl;
+					//
+					myFile << "\tPMT elementary_PID = " << (unsigned int)((packet[18 + (i * 4)] & 0x1F) | packet[19 +(i * 4)]) << std::endl;
+					//
+					myFile << "\tPMT ES_info_lenght = " << (unsigned int)((packet[18 + (i * 4)] & 0x1F) | packet[19 + (i * 4)]) << std::endl;
+
+				}
+				//
+				myFile << "\tPMT CRC_32 = " << std::hex << (unsigned int)packet[20 + (i * 4)] << " " << (unsigned int)packet[21 + (i * 4)] <<
+					" " << (unsigned int)packet[22 + (i * 4)] << " " << (unsigned int)packet[23 + (i * 4)] << std::dec << std::endl;
+
 				myFile << "\t ---- " << std::endl;
 			}
 
