@@ -17,3 +17,7 @@ Atualmente, o código está utilizando o Visual Studio 2015, com isso, necessita
 ## Executando o programa
 
 	mpegtsreader.exe <arquivo>
+	
+## Observações
+
+O código foi testado apenas no Windows, não garanto que ele funcione corretamente caso você apenas pegue o código e compile para Linux, caso faça isso, o resultado pode (ou não) ser diferente do desejado.

@@ -1,3 +1,10 @@
+/* 
+ * File:   Main.cpp
+ * Author: Nycholas de Sousa
+ *
+ * Created on June 21, 2016
+ */
+
 #include "Parser.h"
 
 /*
@@ -6,6 +13,7 @@ INFOS:
 	da tabela PAT na página 43; e da tabela PMT na página 46.
 2.  Correções e verificações dos valores foram feitos através do software disponibilizado em:
 	http://www.pjdaniel.org.uk/mpeg/.
+3.	Perguntar: Ocorre PMT e PAT ao mesmo tempo?
 
 TODO:
 1.  Corrigir erro do program_map_PID/netword_PID da tabela PAT, 
@@ -29,9 +37,9 @@ int main(int argc, char ** argv) {
 	//Para evitar erros e devido o append ao abrir o arquivo, o packets.txt antigo sempre será deletado ao executar o programa
 	remove("packets.txt");
 
-	std::cout << "Começando a ler o "<< argv[1] << ", aguarde o aviso de que o arquivo foi lido completamente." << std::endl;
+	std::cout << "Comecando a ler o "<< argv[1] << ", aguarde o aviso de que o arquivo foi lido completamente." << std::endl;
 	tsParser->readBytes();
-	std::cout << "Arquivo lido e packet.txt com as informações do pacote TS criados." << std::endl;
+	std::cout << "Arquivo lido e packet.txt com as informacoes do pacote TS criado." << std::endl;
 
 	system("pause");
 	delete tsParser;

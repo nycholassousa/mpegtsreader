@@ -1,3 +1,10 @@
+/* 
+ * File:   Parser.cpp
+ * Author: Nycholas de Sousa
+ *
+ * Created on June 21, 2016
+ */
+
 #include "Parser.h"
 
 int pkt_number = 0;
@@ -45,133 +52,156 @@ void Parser::readBytes() {
 	while (!reader.eof()) {
 		myFile.open("packets.txt", std::ofstream::app);
 		reader.read((char*)(&packet[0]), packetSize);
+		time_t t = time(0);   // get time now
+		struct tm * now = localtime(&t);
 
 		//O valor de packet (packet[i]) muda quando passa 8 bytes 
 		//sync_byte possui um valor fixo, que é 0x47, porém, caso esse valor não seja mais esse, ele faz a leitura de novo
 		if (packet[0] != 0x47)
-			//Para não mostrar pacotes nulos ou indevidos, foi feito tal coisa
 			readBytes();
 		else {
-			//Separando os pacotes por numero, apenas por organização
-			myFile << "--------------------   " << ++pkt_number << "o Pacote" << "   --------------------   " << std::endl;
-			//sync_byte possui um valor fixo, '0100 0111' ou '0x47'
-			myFile << "sync_byte = " << "0x47" << std::endl;
-			//transport_error_indicator necessita de apenas 1 bit (1º mais a esquerda), ele é pegado e movido 7 "casas", para que possa ser impresso
-			myFile << "transport_error_indicator = " << ((packet[1] & 0x80) >> 7) << std::endl;
-			//payload_unit_start_indicator é o segundo bit mais a esquerda, pega-se ele e move 6 "casas" para ser impresso
-			myFile << "payload_unit_start_indicator = " << ((packet[1] & 0x40) >> 6) << std::endl;
-			//transport_priority é o 3º mais a esquerda, move-se 5 e é impresso
-			myFile << "transport_priority = " << ((packet[1] & 0x20) >> 5) << std::endl;
-			//PID é o restante do 2º byte e o 3º byte, faz-se uma soma de binário para imprimi-lo
-			myFile << "PID = " << (((packet[1] & 0x1F) << 8) | packet[2]) << std::endl;
+			//Aqui está pegando os packets do TS, depois será feita a verificação pra ver se possui PAT ou PMT
+			sync_byte = packet[0];
+			transport_error_indicator = (packet[1] & 0x80) >> 7;
+			payload_unit_start_indicator = (packet[1] & 0x40) >> 6;
+			transport_priority = (packet[1] & 0x20) >> 5;
+			PID = (((packet[1] & 0x1F) << 8) | packet[2]);
+			transport_scrambling_control = (packet[3] & 0xC0) >> 6;
+			adaptation_field_control = (packet[3] & 0x30) >> 4;
+			continuity_counter = packet[3] & 0x0F;
+			//data_byte = packet[4];
 
-			/*
-			Se o PID do pacote TS for 0, isso quer dizer que há uma tabela PAT
-			Caso o table_id (packet[5]) seja 2, ele será PMT, por isso, não entra nessa condição
-			De acordo com isso, quando ocorrer que o PID seja 0, os dados da tabela PAT será impressa logo abaixo do PID
-			*/
-			if (((((packet[1] & 0x1F) << 8) | packet[2]) == 0) && ((unsigned int)packet[5] != 2)) {
-				//Simples informação ao usuário
-				myFile << "\t ---- " << ++pat_number << "o Pacote PAT" << std::endl;
-				//table_id corresponde a 1 byte, ele é modificado pra unsigned int devido a mnemonica dele (uimsbf)
-				myFile << "\tPAT table_id = " << (unsigned int)packet[5] << std::endl;
-				//section_syntax_indicator é apenas 1 bit, pega-se ele e move para direita para ser impresso
-				myFile << "\tPAT section_syntax_indicator = " << ((packet[6] & 0x80) >> 7) << std::endl;
+			myFile << "------------------------------------------------------------------\n";
+			myFile << "Packet Number: " << ++pkt_number << "\tPID of the Packet: " << PID << std::endl;
+			myFile << "Date and Time Received: " << (now->tm_year + 1900) << '-' << (now->tm_mon + 1) << '-' << now->tm_mday 
+				<< "    " << (now->tm_hour + 1) << ":" << (now->tm_min) << ":" << (now->tm_sec) << std::endl;
+			myFile << "------------------------------------------------------------------\n";
+			
+			//Esses dados são apenas do pacote TS
+			myFile << "sync_byte: 0x" << std::hex << sync_byte << std::dec << std::endl;
+			myFile << "transport_error_indicator: " << transport_error_indicator << std::endl;
+			myFile << "payload_unit_start_indicator: " << payload_unit_start_indicator << std::endl;
+			myFile << "transport_priority: " << transport_priority << std::endl;
+			myFile << "PID: " << PID << std::endl;
+			myFile << "transport_scrambling_control: " << transport_scrambling_control << std::endl;
+			myFile << "adaptation_field_control: " << adaptation_field_control << std::endl;
+			myFile << "continuity_counter: " << continuity_counter << std::endl;
 
-				//Como são valores reservados, não vi a necessidade de que fossem impressos
-				//myFile << "\tPAT 0 = " << ((packet[6] & 0x40) >> 6) << std::endl;
-				//myFile << "\tPAT reserved1 = " << ((packet[6] & 0x20) >> 5) << std::endl;
+			table_id = packet[5];
+			//Para que ocorra a tabela PAT, o PID deve ser 0 e o table_id também deve ser 0
+			if (PID == 0 && table_id != 2) {
+				//Obtendo os dados da tabela
+				section_syntax_indicator = (packet[6] & 0x80) >> 7;
+				zero = (packet[6] & 0x40) >> 6;
+				reserved1 = (packet[6] & 0x30) >> 4;
+				section_lenght = (packet[6] & 0x0F | packet[7]);
+				transport_stream_id = (packet[8] | packet[9]);
+				reserved2 = (packet[10] & 0xC0) >> 6;
+				version_number = (packet[10] & 0x3E) >> 1;
+				current_next_indicator = packet[10] & 0x01;
+				section_number = packet[11];
+				last_section_number = packet[12];
 
-				//section_lenght, restante do byte somado com o próximo byte para ser exibido
-				myFile << "\tPAT section_lenght = " << (unsigned int)((packet[6] & 0x0F) | packet[7]) << std::endl;
-				//transport_stream_id soma 2 bytes e exibe
-				myFile << "\tPAT transport_stream_id = " << (unsigned int)(packet[8] | packet[9]) << std::endl;
+				//Dados da tabela PAT
+				myFile << "\tPAT Packet Number: " << ++pat_number << std::endl;
+				myFile << "\tPAT table_id: " << table_id << std::endl;
+				myFile << "\tPAT section_syntax_indicator: " << section_syntax_indicator << std::endl;
+				myFile << "\tPAT '0': " << zero << std::endl;
+				myFile << "\tPAT reserved_1: " << reserved1 << std::endl;
+				myFile << "\tPAT section_lenght: " << section_lenght << std::endl;
+				myFile << "\tPAT transport_stream_id: " << transport_stream_id << std::endl;
+				myFile << "\tPAT reserved_2: " << reserved2 << std::endl;
+				myFile << "\tPAT version_number: " << version_number << std::endl;
+				myFile << "\tPAT current_next_indicator: " << current_next_indicator << std::endl;
+				myFile << "\tPAT section_number: " << section_number << std::endl;
+				myFile << "\tPAT last_section_number: " << last_section_number << std::endl;
 
-				/*
-				Aqui há um segundo reserved da tabela, que seria os dois primeiros bits de packet[10]
-				Por ser um valor reservado, não vi novamente necessidade de imprimir
-				Além do mais, não vi nada na especificação falando sobre esses campos de nome 'reserved'
-				*/
+				//Auxiliares para a procura do program_number
+				int aux1 = (int)(section_lenght - 8) / 4;
+				int aux2 = 13; //Proxima posição de bytes a ser lida
+				for (int i = 0; i < aux1; i++) {
+					program_number = (packet[aux2] | packet[aux2 + 1]);
+					reserved3 = (packet[aux2 + 2] & 0xE0) >> 5;
+					myFile << "\tPAT program_number: " << program_number << std::endl;
+					myFile << "\tPAT reserved_3: " << reserved3 << std::endl;
 
-				//version_number, pega do 3º ao 7º bit e move para direita, mnemonica uimsbf
-				myFile << "\tPAT version_number = " << (unsigned int)((packet[10] & 0x3E) >> 1) << std::endl;
-				//current_next_indicator, é lido o último bit (mais a direita) e impresso
-				myFile << "\tPAT current_next_indicator = " << (packet[10] & 0x01) << std::endl;
-				//section_number possui um valor de 8 bytes e mnemonica uimsbf, por isso é pego apenas o valor completo e convertido
-				myFile << "\tPAT section_number = " << (unsigned int)(packet[11]) << std::endl;
-				//last_section_number possui um valor de 8 bytes e mnemonica uimsbf, por isso é pego apenas o valor completo e convertido
-				myFile << "\tPAT last_section_number = " << (unsigned int)(packet[12]) << std::endl;
-
-				//Uma pequena operação é realizada para calcular N, que seria a quantidade de vezes para achar program_number
-				int table_count = ((packet[6] & 0x0F) | packet[7]);
-				table_count = ((table_count - 9) / 4);
-				int i;
-
-				//loop para pesquisa do program_number, network_PID ou program_map_PID, ambos de mnemonica uimsbf
-				for (i = 0; i < table_count; i++) {
-					myFile << "\tPAT program_number = " << (unsigned int)(packet[13 + (i * 4)] | packet[14 + (i * 4)]) << std::endl;
-					if ((unsigned int)(packet[13 + (i * 4)] | packet[14 + (i * 4)]) == 0) //if program_number == 0
-						myFile << "\tPAT network_PID = " << (unsigned int)((packet[15 + (i * 4)] & 0x1F) | packet[16 + (i * 4)]) << std::endl;
-					else
-						myFile << "\tPAT program_map_PID = " << (unsigned int)((packet[15 + (i * 4)] & 0x1F) | packet[16 + (i * 4)]) << std::endl;
+					if (program_number == 0) {
+						network_PID = (((packet[aux2 + 2] & 0x1F) << 8) | packet[aux2 + 3]);
+						myFile << "\tPAT network_PID: " << network_PID << std::endl;
+					}
+					else {
+						program_map_PID = (((packet[aux2 + 2] & 0x1F) << 8) | packet[aux2 + 3]);
+						myFile << "\tPAT program_map_PID: " << program_map_PID << std::endl;
+					}
+					aux2 = aux2 + 4;
 				}
-
-				//Foi melhor mostrar o CRC_32 em hex, por isso,converti cada 8 bytes em hex
-				myFile << "\tPAT CRC_32 = " << std::hex << (unsigned int)packet[17] << " " << (unsigned int)packet[18] <<
-					" " << (unsigned int)packet[19] << " " << (unsigned int)packet[20] << std::dec << std::endl;
-				myFile << "\t ---- " << std::endl;
+				//Devido o loop, a posição do byte pode acabar variando
+				myFile << "\tPAT CRC_32 = " << std::hex << (unsigned int)packet[aux2] << " " << (unsigned int)packet[aux2 + 1] <<
+					" " << (unsigned int)packet[aux2 + 2]<< " " << (unsigned int)packet[aux2 + 3] << std::dec << std::endl;
 			}
 
-			if ((unsigned int)packet[5] == 2) { //quando table_id = 2, significa que contem informações sobre o PMT (pagina 42)
-				myFile << "\t ---- " << ++pmt_number << "o Pacote PMT" << std::endl;
-				//table_id tem 1 byte, é lido todo, mnemonica uimsbf
-				myFile << "\tPMT table_id = " << (unsigned int)packet[5] << std::endl;
-				//section_syntax_indicator é apenas 1 bit, pega-se ele e move para direita para ser impresso
-				myFile << "\tPMT section_syntax_indicator = " << ((packet[6] & 0x80) >> 7) << std::endl;
-				//section_lenght são 12 bits, necessário pegar os 4 restantes e somar com os 8 depois
-				myFile << "\tPMT section_lenght = " << (unsigned int)((packet[6] & 0x0F) | packet[7]) << std::endl;
-				//program_number são 16 bits, faz-se a soma
-				myFile << "\tPMT program_number = " << (unsigned int)(packet[8] | packet[9]) << std::endl;
-				//
-				myFile << "\tPMT version_number = " << (unsigned int)((packet[10] & 0x3E) >> 1) << std::endl;
-				//
-				myFile << "\tPMT current_next_indicator = " << (packet[10] & 0x01) << std::endl;
-				//
-				myFile << "\tPMT section_number = " << (unsigned int)(packet[11]) << std::endl;
-				//
-				myFile << "\tPMT last_section_number = " << (unsigned int)(packet[12]) << std::endl;
-				//
-				myFile << "\tPMT PCR_PID = " << (unsigned int)((packet[13] & 0x1F) | packet[14]) << std::endl;
-				//
-				myFile << "\tPMT program_info_lenght = " << (unsigned int)((packet[15] & 0x0F) | packet[16]) << std::endl;
+			//Caso o table_id seja 2, significa que possui uma Tabela PMT
+			if (table_id == 2) {
+				//Obtendo os dados do PMT
+				section_syntax_indicator = (packet[6] & 0x80) >> 7;
+				zero = (packet[6] & 0x40) >> 6;
+				reserved1 = (packet[6] & 0x30) >> 4;
+				section_lenght = section_lenght = (packet[6] & 0x0F | packet[7]);
+				program_number = (packet[8] | packet[9]);
+				reserved2 = (packet[10] & 0xC0) >> 6;
+				version_number = (packet[10] & 0x3E) >> 1;
+				current_next_indicator = packet[10] & 0x01;
+				section_number = packet[11];
+				last_section_number = packet[12];
+				reserved3 = (packet[13] & 0xE0) >> 5;
+				PCR_PID = (((packet[13] & 0x1F) << 8) | packet[14]);
+				reserved4 = (packet[15] & 0xF0) >> 4;
+				program_info_lenght = ((packet[15] & 0x0F) << 8 | packet[16]);
+		
+				//Exibindo os dados do PMT
+				myFile << "\tPMT Packet Number: " << ++pmt_number << std::endl;
+				myFile << "\tPMT table_id: " << table_id << std::endl;
+				myFile << "\tPMT section_syntax_indicator: " << section_syntax_indicator << std::endl;
+				myFile << "\tPMT zero: " << zero << std::endl;
+				myFile << "\tPMT reserved_1: " << reserved1 << std::endl;
+				myFile << "\tPMT section_lenght: " << section_lenght << std::endl;
+				myFile << "\tPMT program_number: " << program_number << std::endl;
+				myFile << "\tPMT reserved_2: " << reserved2 << std::endl;
+				myFile << "\tPMT version_number: " << version_number << std::endl;
+				myFile << "\tPMT current_next_indicator: " << current_next_indicator << std::endl;
+				myFile << "\tPMT section_number: " << section_number << std::endl;
+				myFile << "\tPMT last_section_number: " << last_section_number << std::endl;
+				myFile << "\tPMT reserved_3: " << reserved3 << std::endl;
+				myFile << "\tPMT PCR_PID: " << PCR_PID << std::endl;
+				myFile << "\tPMT reserved_4: " << reserved4 << std::endl;
+				myFile << "\tPMT program_info_lenght: " << program_info_lenght << std::endl;
 
-				int table_count = ((packet[6] & 0x0F) | packet[7]);
-				table_count = ((table_count - 9) / 4);
-				int i;
+				int aux3 = (int)(section_lenght - 13) / 5;
+				int aux4 = 17; //Proxima posição de bytes a ser lida
+				for (int i = 0; i < aux3; i++) {
+					stream_type = packet[aux4];
+					reserved5 = (packet[aux4 + 1] & 0xE0) >> 5;
+					elementary_PID = ((packet[aux4 + 1] & 0x0F) << 8 | packet[aux4 + 2]);
+					reserved6 = (packet[aux4 + 3] & 0xF0) >> 4;
+					ES_info_lenght = ((packet[aux4 + 3] & 0x0F) << 8 | packet[aux4 + 4]);
 
-				for (i = 0; i < 1; i++) {
-					//
-					myFile << "\tPMT stream_type = " << (unsigned int)(packet[17 + (i * 4)]) << std::endl;
-					//
-					myFile << "\tPMT elementary_PID = " << (unsigned int)((packet[18 + (i * 4)] & 0x1F) | packet[19 +(i * 4)]) << std::endl;
-					//
-					myFile << "\tPMT ES_info_lenght = " << (unsigned int)((packet[18 + (i * 4)] & 0x1F) | packet[19 + (i * 4)]) << std::endl;
+					myFile << "\tPMT stream_type: " << stream_type << std::endl;
+					myFile << "\tPMT reserved_5: " << reserved5 << std::endl;
+					myFile << "\tPMT elementary_PID: " << elementary_PID << std::endl;
+					myFile << "\tPMT reserved_6: " << reserved6 << std::endl;
+					myFile << "\tPMT ES_info_lenght: " << ES_info_lenght << std::endl;
 
+					aux4 = aux4 + 5;
 				}
-				//
-				myFile << "\tPMT CRC_32 = " << std::hex << (unsigned int)packet[20 + (i * 4)] << " " << (unsigned int)packet[21 + (i * 4)] <<
-					" " << (unsigned int)packet[22 + (i * 4)] << " " << (unsigned int)packet[23 + (i * 4)] << std::dec << std::endl;
+				//Devido o loop, a posição do byte pode acabar variando
+				myFile << "\tPMT CRC_32 = " << std::hex << (unsigned int)packet[aux4] << " " << (unsigned int)packet[aux4 + 1] <<
+					" " << (unsigned int)packet[aux4 + 2] << " " << (unsigned int)packet[aux4 + 3] << std::dec << std::endl;
 
-				myFile << "\t ---- " << std::endl;
 			}
 
-			//Aqui volta a ser exibido o restante do pacote TS, após finalizar as exibições da tabela PAT
-			myFile << "transport_scrambling_control = " << (packet[3] & 0xC0) << std::endl;
-			myFile << "adaptation_field_control = " << ((packet[3] & 0x30) >> 4) << std::endl;
-			myFile << "continuity_counter = " << (packet[3] & 0xF) << std::endl;
-			myFile << "----------------------------------------------------------" << std::endl;
-			myFile << std::endl;
-
+			//std::cout << "PID: " << PID << std::endl;
+			myFile << "------------------------------------------------------------------";
+			myFile << std::endl << std::endl;
 			myFile.close();
 		}
 	}
