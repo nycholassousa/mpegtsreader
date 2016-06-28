@@ -81,7 +81,7 @@ void Parser::readBytes() {
 
 			table_id = packet[5];
 			//Para que ocorra a tabela PAT, o PID deve ser 0 e o table_id também deve ser 0
-			if (PID == 0 && table_id != 2) {
+			if (PID == 0 && table_id == 0) {
 				//Obtendo os dados da tabela
 				section_syntax_indicator = (packet[6] & 0x80) >> 7;
 				zero = (packet[6] & 0x40) >> 6;
