@@ -1,25 +1,17 @@
 /* 
  * File:   Parser.cpp
  * Author: Nycholas de Sousa
+ * Email: nych.sousa@gmail.com
  *
  * Created on June 21, 2016
  */
 
 #include "Parser.h"
 
+//Variáveis de contagem dos pacotes
 int pkt_number = 0;
 int pat_number = 0;
 int pmt_number = 0;
-
-/*
-Conversão de char para binário
-*/
-void printbincharpad(char c) {
-	for (int i = 7; i >= 0; --i) {
-		putchar((c & (1 << i)) ? '1' : '0');
-	}
-	putchar('\n');
-}
 
 /*
 Função responsável pelo início do parser no vídeo
@@ -162,7 +154,7 @@ void Parser::readBytes() {
 				myFile << "\tPMT Packet Number: " << ++pmt_number << std::endl;
 				myFile << "\tPMT table_id: " << table_id << std::endl;
 				myFile << "\tPMT section_syntax_indicator: " << section_syntax_indicator << std::endl;
-				myFile << "\tPMT zero: " << zero << std::endl;
+				myFile << "\tPMT '0': " << zero << std::endl;
 				myFile << "\tPMT reserved_1: " << reserved1 << std::endl;
 				myFile << "\tPMT section_lenght: " << section_lenght << std::endl;
 				myFile << "\tPMT program_number: " << program_number << std::endl;

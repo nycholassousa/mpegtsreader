@@ -1,9 +1,10 @@
-/* 
- * File:   Parser.h
- * Author: Nycholas de Sousa
- *
- * Created on June 21, 2016
- */
+/*
+* File:   Parser.h
+* Author: Nycholas de Sousa
+* Email: nych.sousa@gmail.com
+*
+* Created on June 21, 2016
+*/
 
 #pragma once
 

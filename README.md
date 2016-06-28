@@ -1,4 +1,4 @@
-# mpegtsreader
+# mpegTSreader
 
 Atividade prática para o processo de seleção para Estagiário em Desenvolvimento de Sistemas do LAVID - Edital Nº 02/2016
 
@@ -19,6 +19,12 @@ Atualmente, o código está utilizando o Visual Studio 2015, com isso, necessita
 	mpegtsreader.exe <arquivo>
 	mpegtsreader.exe video.ts
 	
+## Durante a execução
+
+Quando o programa está executando, ele ficará lendo o vídeo e imprimindo as principais informações das tabelas requisitadas num arquivo com o nome de "packet.txt", onde o mesmo estará no mesmo diretório do programa.
+Dependendo do tamanho do vídeo, pode ser que demore um pouco pra gerar o txt com todas as tabelas, por isso, peço que aguarde um pouco enquanto isso é feito (Com o video.ts fornecido no edital, demora em torno de 5 minutos pra gerar o txt detalhado com TODOS os packets do vídeo).
+	
 ## Observações
 
+Caso não queira compilar, no repositório já possui a última versão compilada, precisando apenas que você execute.
 O código foi testado apenas no Windows, não garanto que ele funcione corretamente caso você apenas pegue o código e compile para Linux, caso faça isso, o resultado pode (ou não) ser diferente do desejado.
