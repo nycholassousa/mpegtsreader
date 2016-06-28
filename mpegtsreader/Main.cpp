@@ -18,7 +18,7 @@ INFOS:
 int main(int argc, char ** argv) {
 	//Usando o programa através de argumentos
 	if (argc != 2) {
-		std::cerr << "Uso: mpegtsreader <video.extensao>" << std::endl;
+		std::cerr << "Uso: mpegtsreader.exe <arquivo>" << std::endl;
 		return EXIT_FAILURE;
 	}
 

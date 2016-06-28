@@ -17,6 +17,7 @@ Atualmente, o código está utilizando o Visual Studio 2015, com isso, necessita
 ## Executando o programa
 
 	mpegtsreader.exe <arquivo>
+	mpegtsreader.exe video.ts
 	
 ## Observações
 

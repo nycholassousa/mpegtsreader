@@ -198,8 +198,6 @@ void Parser::readBytes() {
 					" " << (unsigned int)packet[aux4 + 2] << " " << (unsigned int)packet[aux4 + 3] << std::dec << std::endl;
 
 			}
-
-			//std::cout << "PID: " << PID << std::endl;
 			myFile << "------------------------------------------------------------------";
 			myFile << std::endl << std::endl;
 			myFile.close();
